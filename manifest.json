@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Media Controls",
   "version": "0.1",
-  "description": "play",
+  "description": "Adds a button to control media elements from everywhere in the browser",
   "permissions": [
     "tabs"
   ],
