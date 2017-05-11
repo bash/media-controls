@@ -30,8 +30,12 @@ const sendState = () => {
   browser.runtime.sendMessage({ info: 'playing', playing: [...state.values()] })
 }
 
-const focusTab = ({ id }) => {
-  browser.tabs.update(state.get(id).tabId, { active: true })
+const focusTab = async ({ id }) => {
+  const { tabId } = state.get(id)
+  const { windowId } = await browser.tabs.get(tabId)
+
+  browser.tabs.update(tabId, { active: true })
+  browser.windows.update(windowId, { focused: true })
 }
 
 const sendToTab = (message) => {
