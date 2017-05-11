@@ -1,48 +1,41 @@
 'use strict'
 
-const playing = new Map()
+const state = new Map()
 
-const setStatus = ({ id, status, title }) => {
-  const entry = playing.get(id)
-
-  if (!entry) {
-    return
-  }
-
-  if (title !== undefined) {
-    entry.title = title
-  }
-
-  entry.status = status
-
-  info()
-}
-
-const register = ({ title, id, hostname }, tabId) => {
-  playing.set(id, { status: 'paused', title, tabId, id, hostname })
-  info()
-  browser.browserAction.enable()
-}
-
-const unregister = ({ id }) => {
-  playing.delete(id)
-  info()
-
-  if (playing.size === 0) {
+const update = () => {
+  if (state.size === 0) {
     browser.browserAction.disable()
+    browser.browserAction.setBadgeText({ text: '' })
+  } else {
+    browser.browserAction.enable()
+    browser.browserAction.setBadgeText({ text: `${state.size}` })
   }
+
+  sendState()
 }
 
-const info = () => {
-  browser.runtime.sendMessage({ info: 'playing', playing: [...playing.values()] })
+const setEntry = ({ id, ...changes }) => {
+  const entry = state.get(id) || {}
+  console.log('merging', { id }, entry, changes)
+  state.set(id, Object.assign({ id }, entry, changes))
+  update()
+}
+
+const removeEntry = ({ id }) => {
+  state.delete(id)
+  update()
+}
+
+const sendState = () => {
+  browser.runtime.sendMessage({ info: 'playing', playing: [...state.values()] })
 }
 
 const focusTab = ({ id }) => {
-  browser.tabs.update(playing.get(id).tabId, { active: true })
+  browser.tabs.update(state.get(id).tabId, { active: true })
 }
 
-const redirectToTab = (message) => {
-  const entry = playing.get(message.id)
+const sendToTab = (message) => {
+  const entry = state.get(message.id)
 
   browser.tabs.sendMessage(entry.tabId, message)
 }
@@ -50,28 +43,28 @@ const redirectToTab = (message) => {
 browser.runtime.onMessage.addListener((message, sender) => {
   switch (message.action) {
     case 'register':
-      return register(message, sender.tab.id)
+      return setEntry(Object.assign({ tabId: sender.tab.id, status: 'paused' }, message))
     case 'unregister':
-      return unregister(message)
+      return removeEntry(message)
     case 'info':
-      return info()
+      return sendState()
     case 'pause':
-      return redirectToTab(message)
+      return sendToTab(message)
     case 'play':
-      return redirectToTab(message)
+      return sendToTab(message)
     case 'focusTab':
       return focusTab(message)
   }
 
   if (message.status) {
-    return setStatus(message)
+    return setEntry(message)
   }
 })
 
 browser.tabs.onRemoved.addListener((tabId) => {
-  playing.forEach((entry, id) => {
+  state.forEach((entry, id) => {
     if (entry.tabId === tabId) {
-      playing.remove(id)
+      removeEntry(id)
     }
   })
 })
