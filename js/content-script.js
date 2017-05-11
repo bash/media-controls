@@ -51,6 +51,18 @@ const onPlaying = (event) => sendStatus('playing', event.target)
 const onPaused = (event) => sendStatus('paused', event.target)
 const onEnded = (event) => sendStatus('ended', event.target)
 
+const getStatus = (element) => {
+  if (element.paused) {
+    return 'paused'
+  }
+
+  if (element.ended) {
+    return 'ended'
+  }
+
+  return 'playing'
+}
+
 const registerElement = (element) => {
   const id = generateId()
   const hostname = window.location.hostname
@@ -58,11 +70,13 @@ const registerElement = (element) => {
   ids.set(element, id)
   elements.set(id, element)
 
-  browser.runtime.sendMessage({ action: 'register', id, hostname, title: extractTitle() })
-
-  if (!element.paused) {
-    sendStatus('playing', element)
-  }
+  browser.runtime.sendMessage({
+    action: 'register',
+    id,
+    hostname,
+    title: extractTitle(),
+    status: getStatus(element)
+  })
 
   element.addEventListener('playing', onPlaying)
   element.addEventListener('pause', onPaused)
